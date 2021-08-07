@@ -77,8 +77,8 @@ public:
 
     void isolateLineDirection(DIRECTION d, int strength)
     {
-        // Construct a size object that represents the direction and amount of blurring to be applied
-        cv::Size blurSize = (d == DIRECTION::VERTICAL) ? cv::Size(strength, 1) : cv::Size(1, strength);
+        // Construct a size object that represents the direction (OF THE LINES, not the blur) and amount of blurring to be applied
+        cv::Size blurSize = (d == DIRECTION::VERTICAL) ? cv::Size(1, strength) : cv::Size(strength, 1);
         cv::Mat blur, laplacian;
         
         // Apply directional gaussian blur to filter the lines and use the Laplacian transformation to detect contrasting edges
@@ -90,9 +90,46 @@ public:
         laplacian.convertTo(endpoint, CV_8UC(laplacian.channels()), 0.5, 0.5 * 256);
         
         // Apply adaptive thresholding to isolate the directional lines
+        // cv::threshold(endpoint, endpoint, 150, 255, cv::THRESH_BINARY);
         cv::adaptiveThreshold(endpoint, endpoint, 255, cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY_INV, 15, 15);
     }
 
+    void connectLines(DIRECTION d, int minsize)
+    {
+        cv::Mat labels, stats, centroids;
+        int ncomponents = cv::connectedComponentsWithStats(endpoint, labels, stats, centroids, 8);
+        
+        // connectedComponentswithStats yields every seperated component with information on each of them, such as size
+        // the following part is just taking out the background which is also considered a component, but most of the time we don't want that.
+        // ;//[1:, -1]; nb_components = nb_components - 1
+
+        // minimum size of particles we want to keep (number of pixels)
+        // here, it's a fixed value, but you can set it as you want, eg the mean of the sizes or whatever
+
+        cv::ConnectedComponentsTypes stat = (d == DIRECTION::VERTICAL) ? cv::CC_STAT_HEIGHT : cv::CC_STAT_WIDTH;
+
+        // #2
+        endpoint = cv::Mat(endpoint.size(), CV_8U, cv::Scalar(0));
+
+        for (int i = 1; i < ncomponents; i++) {
+            cv::Mat interm;
+            int size = stats.at<int>(i, stat);
+
+            if (size >= minsize)
+            {
+                // totAdded++;
+                cv::compare(labels, i, interm, cv::CMP_EQ);
+                cv::bitwise_or(interm, endpoint, endpoint);
+            }
+        }
+        // labels.convertTo(endpoint, CV_8UC(labels.channels()), 255.0 / (double)ncomponents);
+    };
+
+    void componentToRGB()
+    {
+        cv::Mat labels, stats, centroids;
+        int ncomponents = cv::connectedComponentsWithStats(endpoint, labels, stats, centroids, 8);        
+    }
 
 private:
     cv::Mat frame;  // The unchanged input frame
@@ -132,9 +169,9 @@ int main(int argc, char** argv)
     // parameters for the realtime vis
     int optype = 0;
     int strength = 31;
+    int minsize = 30;
     std::vector<int> opkeys = {-1, 32, 82, 84};
 
-    std::chrono::high_resolution_clock clock;
 
     while (true)
     {
@@ -152,18 +189,26 @@ int main(int argc, char** argv)
         else if (key == 82) 
         {
             strength += 2;
+            minsize += 2;
         }
         else if (key == 84)
         {
             if (strength != 1) strength -= 2;
+            if (minsize != 0) minsize -= 2;
         }
 
 
         if (optype == 1)
+        {
             proc->isolateLineDirection(DIRECTION::VERTICAL, strength);
+            proc->connectLines(DIRECTION::VERTICAL, minsize);
+        }
         else if (optype == 2)
+        {
             proc->isolateLineDirection(DIRECTION::HORIZONTAL, strength);
-    
+            proc->connectLines(DIRECTION::HORIZONTAL, minsize);
+        }
+
         proc->draw();
     
         if (std::find(opkeys.begin(), opkeys.end(), key) == opkeys.end()) break;
