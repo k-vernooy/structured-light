@@ -3,9 +3,13 @@
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 
+#include "PolynomialRegression.h"
+
 #include <iostream>
 #include <chrono>
 #include <map>
+#include <unistd.h>
+#include <numeric>
 
 
 // class KeyInputHandler
@@ -64,6 +68,7 @@ public:
         return &instance;
     }
 
+
     void addFrame(const cv::Mat& frame_)
     {
         assert((!frame_.empty()));
@@ -71,14 +76,16 @@ public:
         proc = frame_;
     }
 
+
     void process(DIRECTION d, int strength, int minsize)
     {
         LightLineProcessor::isolateLineDirection(frame, proc, d, strength);
         LightLineProcessor::connectLines(proc, proc, d, minsize);
         // LightLineProcessor::visualizeComponents(proc, proc);
-        LightLineProcessor::findCenters(frame, proc, proc, d);
+        LightLineProcessor::findCenters(frame, proc, proc, d, 3);
         return;
     }
+
 
     static void isolateLineDirection(const cv::Mat& f_in, cv::Mat& f_out, DIRECTION d, int strength)
     {
@@ -98,6 +105,7 @@ public:
         // cv::threshold(proc, proc, 150, 255, cv::THRESH_BINARY);
         cv::adaptiveThreshold(f_out, f_out, 255, cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY_INV, 15, 15);
     }
+
 
     static void connectLines(const cv::Mat& f_in, cv::Mat& f_out, DIRECTION d, int minsize)
     {
@@ -147,7 +155,7 @@ public:
     }
 
 
-    static void findCenters(const cv::Mat& frame, const cv::Mat& f_in, cv::Mat& f_out, DIRECTION d)
+    static void findCenters(const cv::Mat& frame, const cv::Mat& f_in, cv::Mat& f_out, DIRECTION d, int padding)
     {
         cv::Mat labels, stats, centroids;
         int ncomponents = cv::connectedComponentsWithStats(f_in, labels, stats, centroids, 8);
@@ -177,12 +185,11 @@ public:
             {
                 cv::Mat disp;
                 frame.copyTo(disp);
-
                 cv::line(disp, topLeft, topRight, cv::Scalar(255, 0, 0), 2);
                 cv::line(disp, topRight, bottomRight, cv::Scalar(255, 0, 0), 2);
                 cv::line(disp, bottomRight, bottomLeft, cv::Scalar(255, 0, 0), 2);
                 cv::line(disp, bottomLeft, topLeft, cv::Scalar(255, 0, 0), 2);
-                
+
                 cv::Point p1, p2;
                 p1 = topLeft;
 
@@ -193,35 +200,76 @@ public:
                 if (d == DIRECTION::VERTICAL) p2.x += lineWidth;
                 else p2.y += lineWidth;
 
-                cv::LineIterator frameIt(frame, p1, p2, 8);
                 cv::LineIterator inIt(labels, p1, p2, 8);
-
-                cv::Point pointsOffset = p1;
-                std::vector<int> points;
-
+                cv::Point p1Cut, p2Cut;
+                cv::Point pOffset = p1;
                 bool hasLineStarted = false;
-                for (int x = 0; x < frameIt.count; x++, ++frameIt, ++ inIt)
+
+                for (int x = 0; x < inIt.count; x++)
                 {
-                    int checkval = (int)*(*inIt);
+                    int checkval = labels.at<int>(pOffset);
 
-                    if (checkval == i) hasLineStarted = true;
-                    else if (hasLineStarted == true) break;
-
-                    if (hasLineStarted) 
+                    if (checkval == i && !hasLineStarted)
                     {
-                        points.push_back((int)*(*frameIt));
-                        disp.at<cv::Vec3b>(pointsOffset) = cv::Vec3b(0, 0, 255);   
+                        hasLineStarted = true;
+                        p1Cut = pOffset;
+                        p2Cut = pOffset;
                     }
-                    // else
-                    // {
-                    // }
-                    if (d == DIRECTION::VERTICAL) pointsOffset.x++;
-                    else pointsOffset.y++;
+                    else if (checkval == i && hasLineStarted)
+                    {
+                        p2Cut = pOffset;
+                    }
+                    else if (checkval != i && hasLineStarted)
+                    {
+                        break;
+                    }
+
+                    if (d == DIRECTION::VERTICAL) pOffset.x++;
+                    else pOffset.y++;
                 }
 
-                // cv::line(disp, p1, p2, cv::Scalar(0, 0, 255), 2);
+                if (d == DIRECTION::VERTICAL)
+                {
+                    p1Cut.x -= padding;
+                    p2Cut.x += padding;
+                }
+                else
+                {
+                    p1Cut.y -= padding;
+                    p2Cut.y += padding;
+                }
+
+                cv::line(disp, p1Cut, p2Cut, cv::Scalar(0, 0, 200), 1);
+
+                std::vector<double> points;
+                cv::LineIterator frameIt(frame, p1Cut, p2Cut, 8);
+                for (int x = 0; x < frameIt.count; x++, frameIt++)
+                {
+                    points.push_back(static_cast<double>((int)*(*frameIt)));
+                }
+
+
+                // std::vector<double> x(points.size());
+                // std::iota(x.begin(), x.end(), 0);
+
+                // PolynomialRegression<double> polyreg;
+                // std::vector<double> coeffs;
+                // polyreg.fitIt(x, points, 2, coeffs);
+
+                // std::cout << "[";
+                // for (int s : points)
+                //     std::cout << s << ", ";
+                // std::cout << "]" << std::endl;
+
+                // std::cout << "[";
+                // for (double c : coeffs)
+                //     std::cout << c << ", ";
+                // std::cout << "]" << std::endl;
+
+                // std::cout << (-1.0 * coeffs[1]) / (2.0 * coeffs[2]) << std::endl;
+
                 cv::imshow("Win", disp);
-                cv::waitKey(30);
+                cv::waitKey(300);
             }
         }
     }
@@ -297,27 +345,12 @@ int main(int argc, char** argv)
         }
 
 
-        // if (optype == 1)
-        // {
-        //     LightLineProcessor::isolateLineDirection(lp->getFrame(), lp->getProc(), DIRECTION::VERTICAL, strength);
-        //     LightLineProcessor::connectLines(lp->getProc(), lp->getProc(), DIRECTION::VERTICAL, minsize);
-        //     LightLineProcessor::visualizeComponents(lp->getProc(), lp->getProc());
-        // }
-        // else if (optype == 2)
-        // {
-            // LightLineProcessor::isolateLineDirection(lp->getFrame(), lp->getProc(), DIRECTION::HORIZONTAL, strength);
-            // LightLineProcessor::connectLines(lp->getProc(), lp->getProc(), DIRECTION::HORIZONTAL, minsize);
-            // LightLineProcessor::visualizeComponents(lp->getProc(), lp->getProc());
-        // }
-
-        // for (int dir : {0, 1})
-
         if (optype != 0)
             lp->process(static_cast<DIRECTION>(optype - 1), strength, minsize);
 
         cv::imshow("Live", lp->getProc());
-    
-        // if (std::find(opkeys.begin(), opkeys.end(), key) == opkeys.end()) break;
+
+        if (std::find(opkeys.begin(), opkeys.end(), key) == opkeys.end()) break;
     }
 
     // cv::cvtColor(frame, frame, COLOR_BGR2GRAY);
