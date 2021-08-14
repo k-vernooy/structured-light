@@ -10,6 +10,7 @@
 #include <map>
 #include <unistd.h>
 #include <numeric>
+#include <cmath>
 
 
 // class KeyInputHandler
@@ -82,7 +83,7 @@ public:
         LightLineProcessor::isolateLineDirection(frame, proc, d, strength);
         LightLineProcessor::connectLines(proc, proc, d, minsize);
         // LightLineProcessor::visualizeComponents(proc, proc);
-        LightLineProcessor::findCenters(frame, proc, proc, d, 3);
+        LightLineProcessor::findCenters(frame, proc, proc, d, 2);
         return;
     }
 
@@ -160,6 +161,8 @@ public:
         cv::Mat labels, stats, centroids;
         int ncomponents = cv::connectedComponentsWithStats(f_in, labels, stats, centroids, 8);
 
+        cv::Mat disp;
+        disp = cv::Mat(frame.size(), CV_8UC3, cv::Scalar(0, 0, 0));
 
         for (int i = 1; i < ncomponents; i++)
         {
@@ -177,18 +180,9 @@ public:
             }
 
             cv::Point topLeft(stats.at<int>(i, cv::CC_STAT_LEFT), stats.at<int>(i, cv::CC_STAT_TOP));
-            cv::Point topRight(topLeft.x + lineWidth, topLeft.y);
-            cv::Point bottomLeft(topLeft.x, topLeft.y + lineHeight);
-            cv::Point bottomRight(topLeft.x + lineWidth, topLeft.y + lineHeight);
 
             for (int j = 0; j <= lineHeight; j++)
             {
-                cv::Mat disp;
-                frame.copyTo(disp);
-                cv::line(disp, topLeft, topRight, cv::Scalar(255, 0, 0), 2);
-                cv::line(disp, topRight, bottomRight, cv::Scalar(255, 0, 0), 2);
-                cv::line(disp, bottomRight, bottomLeft, cv::Scalar(255, 0, 0), 2);
-                cv::line(disp, bottomLeft, topLeft, cv::Scalar(255, 0, 0), 2);
 
                 cv::Point p1, p2;
                 p1 = topLeft;
@@ -202,6 +196,7 @@ public:
 
                 cv::LineIterator inIt(labels, p1, p2, 8);
                 cv::Point p1Cut, p2Cut;
+                int pLength = 0;
                 cv::Point pOffset = p1;
                 bool hasLineStarted = false;
 
@@ -217,6 +212,7 @@ public:
                     }
                     else if (checkval == i && hasLineStarted)
                     {
+                        pLength++;
                         p2Cut = pOffset;
                     }
                     else if (checkval != i && hasLineStarted)
@@ -227,6 +223,8 @@ public:
                     if (d == DIRECTION::VERTICAL) pOffset.x++;
                     else pOffset.y++;
                 }
+                
+                cv::line(disp, p1Cut, p2Cut, cv::Scalar(0, 0, 255), 1);
 
                 if (d == DIRECTION::VERTICAL)
                 {
@@ -239,39 +237,54 @@ public:
                     p2Cut.y += padding;
                 }
 
-                cv::line(disp, p1Cut, p2Cut, cv::Scalar(0, 0, 200), 1);
 
                 std::vector<double> points;
                 cv::LineIterator frameIt(frame, p1Cut, p2Cut, 8);
-                for (int x = 0; x < frameIt.count; x++, frameIt++)
+                for (int x = 0; x < frameIt.count; x++, ++frameIt)
                 {
                     points.push_back(static_cast<double>((int)*(*frameIt)));
                 }
 
+                std::vector<double> x(points.size());
+                std::iota(x.begin(), x.end(), 0);
 
-                // std::vector<double> x(points.size());
-                // std::iota(x.begin(), x.end(), 0);
+                PolynomialRegression<double> polyreg;
+                std::vector<double> coeffs;
+                polyreg.fitIt(x, points, 2, coeffs);
 
-                // PolynomialRegression<double> polyreg;
-                // std::vector<double> coeffs;
-                // polyreg.fitIt(x, points, 2, coeffs);
+                // find the x-coordinate of the vertex of the quadratic regression
+                double quadVertex = (-1.0 * coeffs[1]) / (2.0 * coeffs[2]);
 
-                // std::cout << "[";
-                // for (int s : points)
-                //     std::cout << s << ", ";
-                // std::cout << "]" << std::endl;
+                // mean represents the linear center point of the isolated line (with no regression)
+                double mean = padding + pLength / 2.0;
 
-                // std::cout << "[";
-                // for (double c : coeffs)
-                //     std::cout << c << ", ";
-                // std::cout << "]" << std::endl;
+                // centerPoint will eventually hold the subpixel position of the strip
+                cv::Point centerPoint = p1Cut;
 
-                // std::cout << (-1.0 * coeffs[1]) / (2.0 * coeffs[2]) << std::endl;
+                double delta = 2.0;
+                double toAdd;
 
+
+                // if vertexPos is more than delta away from the mean center, use the mean
+
+                if (std::isnan(quadVertex) || abs(mean - quadVertex) > delta)
+                    toAdd = mean;
+                else
+                    toAdd = quadVertex;
+                
+                if (d == DIRECTION::VERTICAL) centerPoint.x += round(toAdd);
+                else centerPoint.y += round(toAdd);
+
+                
+                if (centerPoint.x >= 0 && centerPoint.y >= 0)
+                    disp.at<cv::Vec3b>(centerPoint) = cv::Vec3b(255, 255, 255);
+                
                 cv::imshow("Win", disp);
-                cv::waitKey(300);
+                cv::waitKey(1);
             }
         }
+
+        f_out = disp;
     }
 
 
