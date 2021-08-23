@@ -32,10 +32,12 @@
 //     };
 // };
 
+
 inline int RandInt()
 {
     return (rand() % 256);
 }
+
 
 class Pinhole
 {
@@ -78,6 +80,9 @@ public:
     }
 
 
+    /**
+     * perform complete processing for `frame` - includes line isolation, connection, and center finding
+     */
     void process(DIRECTION d, int strength, int minsize)
     {
         LightLineProcessor::isolateLineDirection(frame, proc, d, strength);
@@ -108,29 +113,37 @@ public:
     }
 
 
-    static void connectLines(const cv::Mat& f_in, cv::Mat& f_out, DIRECTION d, int minsize)
+    static void connectLines(const cv::Mat& f_in, cv::Mat& f_out, DIRECTION d, int minLength)
     {
-        int minOpStat = 3;
+        int minWidth = 3;
         cv::Mat labels, stats, centroids;
         int ncomponents = cv::connectedComponentsWithStats(f_in, labels, stats, centroids, 8);
-        cv::ConnectedComponentsTypes mainstat = (d == DIRECTION::VERTICAL) ? cv::CC_STAT_HEIGHT : cv::CC_STAT_WIDTH;
-        cv::ConnectedComponentsTypes opstat = (d == DIRECTION::VERTICAL) ? cv::CC_STAT_WIDTH : cv::CC_STAT_HEIGHT;
+        
+        // determine the stats that represent the primary and secondary dimensions of the lines at hand (length and width)
+        cv::ConnectedComponentsTypes primaryDim = (d == DIRECTION::VERTICAL) ? cv::CC_STAT_HEIGHT : cv::CC_STAT_WIDTH;
+        cv::ConnectedComponentsTypes secondaryDim = (d == DIRECTION::VERTICAL) ? cv::CC_STAT_WIDTH : cv::CC_STAT_HEIGHT;
 
+        // clear the output with black
         f_out = cv::Mat(f_out.size(), CV_8U, cv::Scalar(0));
 
         for (int i = 1; i < ncomponents; i++) {
             cv::Mat interm;
-            int size = stats.at<int>(i, mainstat);
-            int opsize = stats.at<int>(i, opstat);
+            
+            // find the dimensions of the current component
+            int length = stats.at<int>(i, primaryDim);
+            int width = stats.at<int>(i, secondaryDim);
 
-            if (size >= minsize && opsize > minOpStat)
+            if (length >= minLength && width > minWidth)
             {
-                // totAdded++;
+                // if the current component is large enough, add it to the `interm` mask
                 cv::compare(labels, i, interm, cv::CMP_EQ);
+
+                // add the interm mask to the output
                 cv::bitwise_or(interm, f_out, f_out);
             }
         }
 
+        // // quick visualization trick
         // labels.convertTo(f_out, CV_8UC(labels.channels()), 255.0 / (double)ncomponents);
     };
 
@@ -141,10 +154,17 @@ public:
         int ncomponents = cv::connectedComponentsWithStats(f_in, labels, stats, centroids, 8);     
         f_out = cv::Mat(f_out.size(), CV_8U, cv::Scalar(0));
 
-        for (int i = 1; i < ncomponents; i++) {
+        for (int i = 1; i < ncomponents; i++)
+        {
             cv::Mat mask;
+
+            // create a single random-colored image 
             cv::Mat fullColor(f_out.size(), CV_8UC3, cv::Scalar(RandInt(), RandInt(), RandInt()));
+        
+            // set the mask to the current component
             cv::compare(labels, i, mask, cv::CMP_EQ);
+
+            // copy the colored image to the output, using the previously created mask
             fullColor.copyTo(f_out, mask);
         }
     }
@@ -161,8 +181,8 @@ public:
         cv::Mat labels, stats, centroids;
         int ncomponents = cv::connectedComponentsWithStats(f_in, labels, stats, centroids, 8);
 
-        cv::Mat disp;
-        disp = cv::Mat(frame.size(), CV_8UC3, cv::Scalar(0, 0, 0));
+        // cv::Mat disp;
+        f_out = cv::Mat(frame.size(), CV_8UC3, cv::Scalar(0, 0, 0));
 
         for (int i = 1; i < ncomponents; i++)
         {
@@ -223,8 +243,8 @@ public:
                     if (d == DIRECTION::VERTICAL) pOffset.x++;
                     else pOffset.y++;
                 }
-                
-                cv::line(disp, p1Cut, p2Cut, cv::Scalar(0, 0, 255), 1);
+
+                cv::line(f_out, p1Cut, p2Cut, cv::Scalar(0, 0, 255), 1);
 
                 if (d == DIRECTION::VERTICAL)
                 {
@@ -277,14 +297,14 @@ public:
 
                 
                 if (centerPoint.x >= 0 && centerPoint.y >= 0)
-                    disp.at<cv::Vec3b>(centerPoint) = cv::Vec3b(255, 255, 255);
+                    f_out.at<cv::Vec3b>(centerPoint) = cv::Vec3b(255, 255, 255);
                 
-                cv::imshow("Win", disp);
+                cv::imshow("Win", f_out);
                 cv::waitKey(1);
             }
         }
 
-        f_out = disp;
+        // f_out = disp;
     }
 
 
