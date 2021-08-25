@@ -1,124 +1,16 @@
-#include <opencv2/core.hpp>
-#include <opencv2/videoio.hpp>
-#include <opencv2/highgui.hpp>
-#include <opencv2/imgproc.hpp>
+#ifndef SL_LINEPROC_H
+#define SL_LINEPROC_H
 
-#include "PolynomialRegression.h"
-
-#include <iostream>
-#include <chrono>
 #include <map>
-#include <unistd.h>
 #include <numeric>
-#include <cmath>
 
-#define PI 3.1415926535
-
-// class KeyInputHandler
-// {
-// public:
-//     // implemented as a singleton
-//     static KeyInputHandler* Get()
-//     {
-//         static KeyInputHandler k;
-//         return &k;
-//     }
-
-//     enum class KEY
-//     {
-//         SPACE = 32,
-//         UP = 82, 
-//         DOWN = 84,
-//         NOKEY = -1
-//     };
-// };
+#include "Util.h"
 
 
-inline int RandInt()
-{
-    return (rand() % 256);
-}
-
-
-class Pinhole
-{
-    // represent 3d calibration matrices of a pinhole obj
-};
-
-class Projector : public Pinhole
-{
-
-};
-
-class Camera : public Pinhole
-{
-    
-};
-
-
-enum class DIRECTION {VERTICAL, HORIZONTAL};
-
-
-class StructuredLightGenerator
-{
-public:
-    static void GenerateLines(cv::Mat& in)
-    {
-        cv::Mat vert(in.size(), CV_8UC3, cv::Scalar(0));
-        cv::Mat horiz(in.size(), CV_8UC3, cv::Scalar(0));
-
-        int minHorizontalDist = 10;
-        int maxHorizontalRand = 60;
-        int verticalPadding = 5;
-
-        for (int i = 0; i < in.cols; i += verticalPadding)
-        {
-            for (int j = 0; j < lineWidth; j++)
-            {
-                double circleDistance = ((double)j / (double)lineWidth) * PI;
-                int x = (int)(sin(circleDistance) * 255.0);
-                cv::line(vert, cv::Point(i + j, 0), cv::Point(i + j, in.rows), cv::Scalar(0, 0, x), 1);
-            }
-
-            i += lineWidth;
-        }
-
-        int y = 0;
-        while (y < in.rows)
-        {
-            y += minHorizontalDist + (rand() % maxHorizontalRand);
-            
-            for (int j = 0; j < lineWidth; j++)
-            {
-                double circleDistance = ((double)j / (double)lineWidth) * PI;
-                int x = (int)(sin(circleDistance) * 255.0);
-                cv::line(horiz, cv::Point(0, y + j), cv::Point(in.cols, y + j), cv::Scalar(0, 0, x), 1);
-            }
-            
-            y += lineWidth;
-            // int horizontalFrequency;
-        }
-
-        in = horiz + vert;
-    }
-
-    const static int lineWidth = 8;
-};
-
-
-/**
- * A class that manages the initial image processing required to isolate and clean
- * the projected vertical and horizontal stripes. Performs
- */
 class LightLineProcessor
 {
 public:
-    static LightLineProcessor* Get()
-    {
-        static LightLineProcessor instance;
-        return &instance;
-    }
-
+    LightLineProcessor() {}
 
     void addFrame(const cv::Mat& frame_)
     {
@@ -367,82 +259,4 @@ private:
 };
 
 
-
-
-int main(int argc, char** argv)
-{
-    cv::Mat frame;
-    cv::VideoCapture cap;
-    bool isStatic = false;
-
-    // initialize opencv video device as either a static image or a camera
-    try
-    {
-        cap.open(std::stoi(argv[1]), cv::CAP_ANY);
-    }
-    catch (...)
-    {
-        isStatic = true;
-        cap.open(argv[1]);
-    }
-
-    assert(cap.isOpened()); 
-
-
-    // Read a single frame from the video device and add it to the processor
-    cap.read(frame);
-    LightLineProcessor* lp = LightLineProcessor::Get();
-    lp->addFrame(frame);
-
-    // parameters for the realtime vis
-    int optype = 0;
-    int strength = 31;
-    int minsize = 15;
-    std::vector<int> opkeys = {-1, 32, 82, 84};
-
-
-    // while (true)
-    // {
-    //     // capture a new frame if we're processing a live feed
-    //     if (!isStatic) cap.read(frame);
-    //     lp->addFrame(frame);
-
-    //     char key = (char) cv::waitKey(30);
-        
-    //     if (key == 32)
-    //     {
-    //         if (optype == 2) optype = 0;
-    //         else optype++;
-    //     }
-    //     else if (key == 82) 
-    //     {
-    //         strength += 2;
-    //         minsize += 2;
-    //     }
-    //     else if (key == 84)
-    //     {
-    //         if (strength != 1) strength -= 2;
-    //         if (minsize != 0) minsize -= 2;
-    //     }
-
-
-    //     if (optype != 0)
-    //         lp->process(static_cast<DIRECTION>(optype - 1), strength, minsize);
-
-    //     cv::imshow("Live", lp->getProc());
-
-    //     if (std::find(opkeys.begin(), opkeys.end(), key) == opkeys.end()) break;
-    // }
-
-
-    cv::Mat pattern(cv::Size(640, 480), CV_8UC3, cv::Scalar(0));
-    StructuredLightGenerator::GenerateLines(pattern);
-
-    cv::imshow("test", pattern);
-    cv::waitKey(300000);
-    // cv::cvtColor(frame, frame, COLOR_BGR2GRAY);
-    // Mat kernel = (Mat_<int>(3, 3) << 0, 1, 0, 1, -4, 1, 0, 1, 0);
-    // cv::filter2D(frame, frame, CV_64F, kernel);
-
-    return 0;
-}
+#endif
