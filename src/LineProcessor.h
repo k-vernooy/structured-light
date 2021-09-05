@@ -23,12 +23,12 @@ public:
     /**
      * perform complete processing for `frame` - includes line isolation, connection, and center finding
      */
-    void process(DIRECTION d, int strength, int minsize)
+    void process(DIRECTION d, int strength, int minsize, int padding)
     {
         LightLineProcessor::isolateLineDirection(frame, proc, d, strength);
-        LightLineProcessor::connectLines(proc, proc, d, minsize);
+        // LightLineProcessor::connectLines(proc, proc, d, minsize);
         // LightLineProcessor::visualizeComponents(proc, proc);
-        LightLineProcessor::findCenters(frame, proc, proc, d, 2);
+        // LightLineProcessor::findCenters(frame, proc, proc, d, padding);
         return;
     }
 
@@ -48,8 +48,8 @@ public:
         laplacian.convertTo(f_out, CV_8UC(laplacian.channels()), 0.5, 0.5 * 256);
         
         // Apply adaptive thresholding to isolate the directional lines
-        // cv::threshold(proc, proc, 150, 255, cv::THRESH_BINARY);
-        cv::adaptiveThreshold(f_out, f_out, 255, cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY_INV, 15, 15);
+        cv::threshold(f_out, f_out, 140, 255, cv::THRESH_BINARY);
+        // cv::adaptiveThreshold(f_out, f_out, 255, cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY_INV, 25, 25);
     }
 
 
@@ -123,6 +123,7 @@ public:
 
         // cv::Mat disp;
         f_out = cv::Mat(frame.size(), CV_8UC3, cv::Scalar(0, 0, 0));
+        // f_out = frame;
 
         for (int i = 1; i < ncomponents; i++)
         {
@@ -184,8 +185,6 @@ public:
                     else pOffset.y++;
                 }
 
-                // cv::line(f_out, p1Cut, p2Cut, cv::Scalar(0, 0, 255), 1);
-
                 if (d == DIRECTION::VERTICAL)
                 {
                     p1Cut.x -= padding;
@@ -197,6 +196,8 @@ public:
                     p2Cut.y += padding;
                 }
 
+                // cv::line(f_out, p1Cut, p2Cut, cv::Scalar(0, 0, 255), 1);
+                // cv::line(f_out, p1Orig, p2Orig, cv::Scalar(255, 0, 0), 1);
 
                 std::vector<double> points;
                 cv::LineIterator frameIt(frame, p1Cut, p2Cut, 8);
@@ -239,8 +240,8 @@ public:
                 if (centerPoint.x >= 0 && centerPoint.y >= 0)
                     f_out.at<cv::Vec3b>(centerPoint) = cv::Vec3b(255, 255, 255);
                 
-                cv::imshow("Win", f_out);
-                cv::waitKey(1);
+                // cv::imshow("Win", f_out);
+                // cv::waitKey(1);
             }
         }
 
