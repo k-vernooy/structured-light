@@ -5,19 +5,40 @@
 #include <opencv2/videoio.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
-#include <cmath>
+#include <opencv2/viz/viz3d.hpp>
 
-#include "PolynomialRegression.h"
+#include <cmath>
+#include <queue>
+
+#include "../lib/PolynomialRegression.h"
+
 
 #define PI 3.14159265358979
 
 
 enum class DIRECTION {VERTICAL, HORIZONTAL};
 
-inline int RandInt()
+
+inline uint8_t RandInt()
 {
     return (rand() % 256);
 }
+
+
+class PlaybackHandler
+{
+
+};
+
+
+/**
+ * input thread will push to the frames, worker frames will pop and dispatch it to the processing
+ * NOTE: this is only necessary if we're doing live processing
+ */
+class WorkDispatcher
+{
+    std::queue<cv::Mat> frames;
+};
 
 
 // class KeyInputHandler

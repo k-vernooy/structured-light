@@ -3,19 +3,29 @@
 
 #include "Util.h"
 
+class Plane
+{
+
+};
+
 
 class StructuredLight
 {
 public:
-    cv::Mat pattern;
+    cv::Mat data;
+
 private:
     StructuredLight();
 };
 
 
 class GridPlanesPattern : public StructuredLight
-{
+{ 
+    // these planes will be specified in "normalized device coordinates" rather than 3d world space;
+    // projection of the planes into world space can be achieved via calibration data in the Projector class
 
+    std::vector<Plane> verticalPlanes;
+    std::vector<Plane> horizontalPlanes;
 };
 
 

@@ -26,9 +26,9 @@ public:
     void process(DIRECTION d, int strength, int minsize, int padding)
     {
         LightLineProcessor::isolateLineDirection(frame, proc, d, strength);
-        // LightLineProcessor::connectLines(proc, proc, d, minsize);
+        LightLineProcessor::connectLines(proc, proc, d, minsize);
         // LightLineProcessor::visualizeComponents(proc, proc);
-        // LightLineProcessor::findCenters(frame, proc, proc, d, padding);
+        LightLineProcessor::findCenters(frame, proc, proc, d, padding);
         return;
     }
 
@@ -48,8 +48,8 @@ public:
         laplacian.convertTo(f_out, CV_8UC(laplacian.channels()), 0.5, 0.5 * 256);
         
         // Apply adaptive thresholding to isolate the directional lines
-        cv::threshold(f_out, f_out, 140, 255, cv::THRESH_BINARY);
-        // cv::adaptiveThreshold(f_out, f_out, 255, cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY_INV, 25, 25);
+        // cv::threshold(f_out, f_out, 140, 255, cv::THRESH_BINARY);
+        cv::adaptiveThreshold(f_out, f_out, 255, cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY_INV, 25, 25);
     }
 
 

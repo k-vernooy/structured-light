@@ -7,7 +7,7 @@
 #include <chrono>
 #include <unistd.h>
 
-#include "../src/Unified.h"
+#include "../src/All.h"
 
 
 enum class KEYS
@@ -34,10 +34,6 @@ std::map<KEYS, char> keyMap
 int main(int argc, char** argv)
 {
     srand(time(NULL));
-
-
-    cv::viz::Viz3d myWindow("Viz Demo");
-    myWindow.spin();
 
     cv::Mat frame;
     cv::VideoCapture cap;
