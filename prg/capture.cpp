@@ -7,7 +7,7 @@
 #include <chrono>
 #include <unistd.h>
 
-#include "Unified.h"
+#include "../src/Unified.h"
 
 
 enum class KEYS
@@ -35,6 +35,10 @@ int main(int argc, char** argv)
 {
     srand(time(NULL));
 
+
+    cv::viz::Viz3d myWindow("Viz Demo");
+    myWindow.spin();
+
     cv::Mat frame;
     cv::VideoCapture cap;
 
@@ -48,7 +52,7 @@ int main(int argc, char** argv)
     }
     catch (...)
     {
-        // isStatic = true;
+        isStatic = true;
         cap.open(argv[1]);
     }
 
@@ -77,11 +81,10 @@ int main(int argc, char** argv)
         // capture a new frame if we're processing a live feed
         if (!isStatic && !isPaused)
         {
-            if (unPauseOneFrame != -1)
-                unPauseOneFrame++;
+            if (unPauseOneFrame != -1) unPauseOneFrame++;
             cap.read(frame);
-            cv::Mat rotationMatrix = cv::getRotationMatrix2D(cv::Point(frame.cols / 2, frame.rows / 2), rotation, 1.0);
-            cv::warpAffine(frame, frame, rotationMatrix, cv::Point(frame.cols, frame.rows));
+            // cv::Mat rotationMatrix = cv::getRotationMatrix2D(cv::Point(frame.cols / 2, frame.rows / 2), rotation, 1.0);
+            // cv::warpAffine(frame, frame, rotationMatrix, cv::Point(frame.cols, frame.rows));
         }
 
 
