@@ -1,7 +1,10 @@
 #ifndef SL_STRUCTUREDLIGHT_H
 #define SL_STRUCTUREDLIGHT_H
 
+#include <map>
+
 #include "Util.h"
+
 
 class Plane
 {
@@ -12,10 +15,13 @@ class Plane
 class StructuredLight
 {
 public:
-    cv::Mat data;
+    cv::Mat getPlanes(DIRECTION dir);
 
 private:
     StructuredLight();
+
+    cv::Mat imgData;
+    std::map<DIRECTION, cv::Mat> planesData;
 };
 
 

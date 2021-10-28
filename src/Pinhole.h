@@ -7,15 +7,18 @@
 class Pinhole
 {
     // represent matrices of a pinhole obj
-    cv::Mat3f intrinsics;
+    cv::Mat intrinsics;
 
-    // rotation, translation;
+    // "distortion coefficient vector"
+    cv::Mat distortion;
+    
+    // rotation, translation
+    cv::Mat extrinsics;
 };
 
 
 class Projector : public Pinhole
 {
-
 public:
     StructuredLight knownProjection;
 };
