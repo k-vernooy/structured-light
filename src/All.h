@@ -4,3 +4,4 @@
 #include "StructuredLight.h"
 #include "Graphics.h"
 #include "Calibration.h"
+#include "Acquisition.h"

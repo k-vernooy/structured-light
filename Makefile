@@ -9,7 +9,11 @@ BUILDPRG := build/prg
 BUILDSRC := build/src
 
 OPENCV := `pkg-config --libs --cflags opencv4`
-LIBS := $(OPENCV)
+
+SPINDIR := /opt/spinnaker
+SPINNAKER := -L$(SPINDIR)/lib/ -l Spinnaker -I$(SPINDIR)/include/
+
+LIBS := $(OPENCV) $(SPINNAKER)
 CXXFLAGS += $(LIBS)
 
 

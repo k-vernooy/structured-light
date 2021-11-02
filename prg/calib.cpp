@@ -21,47 +21,56 @@ int main(int argc, char** argv)
     bool isStatic = false;
     bool isPaused = false;
 
-    // initialize opencv video device as either a static image or a camera
-    try
-    {
-        cap.open(std::stoi(argv[1]), cv::CAP_ANY);
-    }
-    catch (...)
-    {
-        isStatic = true;
-        cap.open(argv[1]);
-    }
+    FLIRCameraInterface capture = FLIRCameraInterface(0);
+    std::cout << capture.getIsOpen() << std::endl;
+    capture.captureFrame(frame);
 
-    assert(cap.isOpened()); 
+    // // initialize opencv video device as either a static image or a camera
+    // try
+    // {
+    //     cap.open(std::stoi(argv[1]), cv::CAP_ANY);
+    // }
+    // catch (...)
+    // {
+    //     isStatic = true;
+    //     cap.open(argv[1]);
+    // }
+
+    // assert(cap.isOpened()); 
 
 
-    // Read a single frame from the video device and add it to the processor
-    cap.read(frame);
-    std::vector<int> opkeys = {-1, 32, 82, 84};
+    // // Read a single frame from the video device and add it to the processor
+    // cap.read(frame);
+    // std::vector<int> opkeys = {-1, 32, 82, 84};
 
 
-    while (true)
-    {
-        cap.read(frame);
-        char key = (char) cv::waitKey(1);        
+    // while (true)
+    // {
+    //     cap.read(frame);
+    //     cv::Mat grey;
+    //     cv::cvtColor(frame, grey, cv::COLOR_RGB2GRAY);
+
+    //     char key = (char) cv::waitKey(1);    
         
-        // cv::Mat<cv::Point2f> corners;
-        std::vector<cv::Point2f> corners;
-        cv::Size boardSize = cv::Size(9, 6);
+    //     // cv::Mat<cv::Point2f> corners;
+    //     std::vector<cv::Point2f> corners;
+    //     cv::Size boardSize = cv::Size(8, 5);
 
-        int found = cv::findChessboardCorners(frame, boardSize, corners);
+    //     bool found = cv::findChessboardCorners(grey, boardSize, corners, cv::CALIB_CB_ADAPTIVE_THRESH | cv::CALIB_CB_FILTER_QUADS);
 
-        std::cout << found << std::endl;
+    //     if (found)
+    //     {
+    //         cv::cornerSubPix(grey, corners, cv::Size(10, 10), cv::Size(-1, -1), cv::TermCriteria(cv::TermCriteria::EPS | cv::TermCriteria::MAX_ITER, 30, 0.1));
+    //         cv::drawChessboardCorners(frame, boardSize, corners, 1);
+    //     }
 
-        if (found)
-        {
-            std::cout << "found" << std::endl;
-            cv::cornerSubPix(frame, corners, cv::Size(11, 11), cv::Size(-1, -1), cv::TermCriteria(cv::TermCriteria::EPS | cv::TermCriteria::MAX_ITER, 30, 0.1));
-            cv::drawChessboardCorners(frame, boardSize, corners, found);
-        }
-        
-        cv::imshow("test", frame);
-    }
+    //     cv::imshow("test", frame);
+
+    //     cv::Mat object_points, image_points, point_counts, rotation_vectors, translation_vectors;
+    //     // cv::calibrateCamera(object_points, image_points, cv::Size(frame.cols, frame.rows), )
+    // }
+
+    
 
 
     return 0;
